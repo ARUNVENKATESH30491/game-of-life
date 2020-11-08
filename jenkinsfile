@@ -1,0 +1,47 @@
+pipeline
+{
+agent any
+stages{
+stage(git){
+steps{
+checkout([$class: 'GitSCM', branches: [[name: '*/master']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[url: 'https://github.com/ARUNVENKATESH30491/GOL-Repo.git']]])
+}
+}
+stage(Artifacte creation)
+{
+steps{
+sh 'clean package'
+}
+}
+stage(publish test result)
+{
+steps{
+junit 'target/test-reports/*.xml'
+}
+}
+stage(Code Quality)
+{
+steps{
+ withSonarQubeEnv('sonarqube') {
+            sh "${scannerHome}/bin/sonar-scanner"
+        }       
+}
+}
+stage(publish artificate to nexus)
+{
+steps{
+nexusPublisher nexusInstanceId: '1234', nexusRepositoryId: 'releases', packages: [[$class: 'MavenPackage', mavenAssetList: [[classifier: '', extension: '', filePath: 'target/gameoflife-web/gameoflife.war']], mavenCoordinate: [artifactId: 'gameoflife', groupId: 'com.wakaleo.gameoflife', packaging: 'war', version: '$BUILD_VERSION']]]
+}
+}
+}
+post
+{
+success{
+archiveArtifacts artifacts: 'target/gameoflife-web/gameoflife.war', followSymlinks: false
+}
+failure
+{
+mail bcc: '', body: '', cc: '', from: '', replyTo: '', subject: 'GOL -Job Status', to: 'akv30491@gmail.com'
+}
+}
+}
